@@ -11,6 +11,18 @@ starterProjects:
       branch: master
 components:
   - container:
+      name: devprimer
+      image: uberskigeek/testvolumes:0.0.1
+      memoryLimit: 1512Mi
+      mountSources: true
+      endpoints:
+        - name: 9081/tcp
+          targetPort: 9081
+      volumeMounts:
+        - name: m2
+          path: /testvolumes
+
+  - container:
       name: devruntime
       # this custom image source can be found in the baseimage section of the repo at:
       # https://github.com/OpenLiberty/application-stack.git
@@ -20,6 +32,13 @@ components:
       endpoints:
         - name: 9080/tcp
           targetPort: 9080
+      volumeMounts:
+        - name: m2
+          path: /testvolumes
+  - volume:
+      name: m2
+      size: 5Gi 
+ 
 commands:
 # devInit currently not functional in odo devfile v2 - will re-enable when available
 # as a workaround, moved devInit command to the devBuild command since our stack
@@ -56,7 +75,8 @@ commands:
   - exec:
       id: devRun
       component: devruntime 
-      commandLine: mvn -Dmaven.repo.local=/mvn/repository -Dliberty.runtime.version=20.0.0.9 -DhotTests=true liberty:dev
+      commandLine: /testvolumes/testvolume.sh
+                  && mvn -Dmaven.repo.local=/mvn/repository -Dliberty.runtime.version=20.0.0.9 -DhotTests=true liberty:dev
       workingDir: /projects
       attributes:
         restart: "false"
@@ -73,3 +93,30 @@ commands:
       group:
         kind: run
         isDefault: false
+   - exec:
+      id: maketestvol
+      component: devprimer
+      commandLine: echo "echo test script created" > /testvolumes/testvolume.sh
+                   && chmod 777 /testvolumes/testvolume.sh
+      workingDir: /testvolumes
+      attributes:
+         restart: "false"
+      group:
+         kind:run
+         isDefault: false
+   - exec:
+      id: runtestvol
+      component:devruntime
+      commandLine: /testvolumes/testvolume.sh
+      workingDir: /projects
+      attributes:
+        restart: "false"
+      group:
+        kind: run
+        isDefault: false
+ events:
+  preStart:
+    - "maketestvol"
+  postStart:
+    - "runtestvol"
+  
