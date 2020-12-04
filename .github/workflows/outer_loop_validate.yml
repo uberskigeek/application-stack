@@ -1,0 +1,38 @@
+name: validate_outer_loop
+on: [push]
+jobs:
+   check-app-deloy:
+     runs-on: ubuntu-latest
+     steps:
+     
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+          architecture: x64
+ 
+      - name: curl
+        uses: wei/curl@master
+        with:
+          args: https://httpbin.org/get
+
+      - name: Setup Minikube
+        uses: manusa/actions-setup-minikube@v2.1.0
+        with:
+          minikube version: 'v1.11.0'
+          kubernetes version: 'v1.17.0'
+          github token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Interact with the cluster
+        run: kubectl get nodes
+      
+      - name: install odo
+        run: | 
+         sudo curl -L https://mirror.openshift.com/pub/openshift-v4/clients/odo/latest/odo-linux-amd64 -o /usr/local/bin/odo
+         sudo chmod +x /usr/local/bin/odo
+ 
+      - name: run-single-script
+        run: python ./intro_script.py
